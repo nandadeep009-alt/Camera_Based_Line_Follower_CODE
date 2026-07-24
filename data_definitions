@@ -1,0 +1,14 @@
+# ==============================================================================
+# DATA DEFINITIONS
+# ==============================================================================
+
+# A SteeringAngle is an Integer in the range [45, 135]
+# Interpretation: Mechanical degrees for the front axle servo motor.
+# - 90: Wheels pointing straight ahead.
+# - 45: Full lock left turn.
+# - 135: Full lock right turn.
+
+# A MotorState is one of:
+# - "DRIVE" : Rear wheels spin forward to move the vehicle.
+# - "STOP"  : Rear wheels lose power completely.
+# Interpretation: The activation state of the L298N H-Bridge logic pins.
