@@ -98,56 +98,91 @@ class VisionController:    # Define a class dedicated to image processing and st
         self.scale_factor = scale_factor # Store the shrink ratio inside the object
         self.servo_center = 90 # Define 90 degrees as perfectly straight ahead for our physical servo
         self.last_valid_angle = 90 # Store the last known valid steering angle to remember trajectory when the line is lost
-        
+
         self.state = "DRIVE"     # Initialize the state machine state string ("DRIVE", "SEARCH_STOP", "REVERSE")
-        self.lost_line_timestamp = 0 # Initialize a timer tracking the exact timestamp for the emergency stop phase
-        self.reverse_start_timestamp = 0 # Initialize a timer tracking the exact timestamp when reversing actually began
+        self.lost_line_timestamp = 0 # Initialize a timer for the emergency stop wait window
+        self.reverse_start_timestamp = 0 # Initialize a timer for the reverse recovery window
 
     def map_error_to_angle(self, error): # Method to convert pixel distance into a physical steering angle
         kp = 0.2           # Proportional gain: how aggressively the robot should steer to correct the error
         angle = self.servo_center + int(error * kp) # Calculate the new angle by multiplying the error by our aggressiveness
         return int(max(45, min(135, angle))) # Clamp the angle between 45 and 135 so we don't break the physical steering column
 
-    def process_frame(self, frame): # The main method that analyzes a single picture
-        # Shrink the image using the scale factor to make the math run much faster
+    def process_frame(self, frame): # The main method that analyzes a single picture and decides the next motor and steering action
+        # Downscale the image to reduce CPU load and make the vision logic run faster on the PC or ESP32 side
         small_frame = cv2.resize(frame, (0, 0), fx=self.scale_factor, fy=self.scale_factor, interpolation=cv2.INTER_AREA)
-        height, width = small_frame.shape[:2] # Extract the new height and width of the shrunken image
-        
-        gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY) # Convert the color image into grayscale (black and white)
-        # Apply a smart threshold to isolate the dark line from the background, creating a high-contrast binary mask
-        # NEW FIX: Measure the average brightness of all pixels (0 is pitch black, 255 is blinding light).
-        mean_brightness = cv2.mean(gray)[0]
+        height, width = small_frame.shape[:2] # Store the reduced frame dimensions so steering math can use the new image size
 
-        # If the average brightness is under 20, the camera is covered or the room is pitch black.
+        # Convert the frame to grayscale so the dark line is easier to isolate from the background
+        gray = cv2.cvtColor(small_frame, cv2.COLOR_BGR2GRAY)
+        mean_brightness = cv2.mean(gray)[0] # Measure the overall brightness; low values usually mean the camera is blocked or the room is dark
+
+        # If the image is too dark, stop immediately because the robot cannot trust the line detection
         if mean_brightness < 20:
-            # Snap the steering back to straight ahead.
-            target_angle = self.servo_center
-            # Tell the motors to stop.
-            engine_state = "STOP"
-            # Draw red warning text on the screen so you know why it stopped.
+            target_angle = self.servo_center # Keep the steering straight when the camera cannot see clearly
+            engine_state = "STOP" # Prevent the robot from moving blindly in a low-light or blocked-camera condition
             cv2.putText(small_frame, "TOO DARK", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            
-        else:
-            # If the room is bright enough, apply the night-vision contrast filter.
-            # This turns everything darker than average into pure white, and everything else pure black.
-            thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-            
-            # Calculate the "moments" — this is a geometry math trick to find the center of mass of the white pixels.
-            M = cv2.moments(thresh)
-            
-            if M["m00"] > 15000:   # If m00 is greater than 0, it means we actually found a line in the image
-               cx = int(M["m10"] / M["m00"]) # Calculate the exact X-coordinate (horizontal position) of the center of the line
-               error = cx - (width // 2) # Calculate how many pixels off-center the line is from the middle of the camera view
-               target_angle = self.map_error_to_angle(error) # Pass that pixel error to our math function to get a steering angle
-               engine_state = "DRIVE" # Because we see the line, command the back motors to drive forward
-               # Draw a small green dot on the image right in the middle of the detected line so we can see it working
-               cv2.circle(small_frame, (cx, height // 2), 5, (0, 255, 0), -1) 
-            else:              # If m00 is 0, it means the camera sees absolutely no line at all
-               target_angle = self.servo_center # Center the steering back to 90 degrees
-               engine_state = "STOP" # Command the motors to stop so the robot doesn't drive off a cliff
+            return target_angle, engine_state, small_frame
 
-        return target_angle, engine_state, small_frame # Send the answers and the drawn-on image back to the main program
+        # Create a binary image where the dark line stands out clearly from the lighter floor
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+        M = cv2.moments(thresh) # Compute the image moments to find the center of the detected line mass
 
+        # If enough dark pixels are found, the line is visible and the robot can continue driving normally
+        if M["m00"] > 15000:   # This threshold means the line occupies enough pixels to be considered a real detection
+            cx = int(M["m10"] / M["m00"]) # Calculate the horizontal center of the detected line
+            error = cx - (width // 2) # Measure how far the line is from the middle of the frame
+            target_angle = self.map_error_to_angle(error) # Convert the pixel error into a steering angle
+            self.last_valid_angle = target_angle # Save the last good steering angle for reverse recovery planning
+
+            # If the robot was in a recovery state, switch back to normal forward motion as soon as the line is found again
+            if self.state in ["SEARCH_STOP", "REVERSE"]:
+                print("Line detected! Returning to forward drive.")
+                self.state = "DRIVE"
+
+            engine_state = "DRIVE" # Command the motors to move forward when the line is visible
+            cv2.circle(small_frame, (cx, height // 2), 5, (0, 255, 0), -1) # Draw a green dot on the detected line center
+            cv2.putText(small_frame, f"LINE DETECTED: {self.state}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        # If the line is lost, activate the failsafe behavior: stop, wait, then reverse to recover it
+        else:                  # This branch runs only when the line is no longer visible in the frame
+            current_time = time.time() # Use the current clock time to measure how long the robot has been in each recovery stage
+
+            # Enter the stop phase the first time the line is lost during normal driving
+            if self.state == "DRIVE":
+                self.state = "SEARCH_STOP" # Change state so the robot knows it is entering a recovery routine
+                self.lost_line_timestamp = current_time # Record when the line was lost to time the stop period
+                print("Vehicle lost the line. Stopping and waiting 3-4 seconds to recover.")
+
+            # During the stop phase, keep the robot motionless so it can settle before reversing
+            if self.state == "SEARCH_STOP":
+                target_angle = self.servo_center # Keep steering centered while the vehicle is paused
+                engine_state = "STOP" # Hold the motors still during the wait window
+
+                # After 3.5 seconds, start the reverse recovery phase
+                if current_time - self.lost_line_timestamp > 3.5:
+                    self.state = "REVERSE" # Switch from stop to reverse recovery mode
+                    self.reverse_start_timestamp = current_time # Record when reverse motion began
+                    print("Wait complete. Reversing along the same trajectory to find the line.")
+
+            # In reverse mode, drive backward while steering in a mirrored direction to try to find the line again
+            elif self.state == "REVERSE":
+                elapsed_reverse = current_time - self.reverse_start_timestamp # Measure how long reverse recovery has been active
+                print(f"Reversing to recover the line... ({elapsed_reverse:.1f} / 5.0 s)")
+
+                reverse_angle = 180 - self.last_valid_angle # Mirror the last known steering angle so the reverse path follows the same curve
+                target_angle = max(45, min(135, reverse_angle)) # Clamp the reverse steering angle to safe servo limits
+
+                # Keep reversing for up to 5 seconds, then stop if the line has still not reappeared
+                if elapsed_reverse < 5.0:
+                    engine_state = "REVERSE" # Tell the motor controller to drive backward
+                else:
+                    engine_state = "STOP" # Stop after the maximum reverse window to avoid endless backing up
+                    cv2.putText(small_frame, "REVERSE TIMEOUT", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+            cv2.putText(small_frame, f"FAILSAFE: {self.state}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+        return target_angle, engine_state, small_frame
 
 # ---------------------------------------------------------
 # OOP Concept: Dependency Injection & Orchestration
