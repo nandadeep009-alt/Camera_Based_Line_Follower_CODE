@@ -97,6 +97,11 @@ class VisionController:    # Define a class dedicated to image processing and st
     def __init__(self, scale_factor=0.5): # Constructor that allows us to shrink the image to save CPU power
         self.scale_factor = scale_factor # Store the shrink ratio inside the object
         self.servo_center = 90 # Define 90 degrees as perfectly straight ahead for our physical servo
+        self.last_valid_angle = 90 # Store the last known valid steering angle to remember trajectory when the line is lost
+        
+        self.state = "DRIVE"     # Initialize the state machine state string ("DRIVE", "SEARCH_STOP", "REVERSE")
+        self.lost_line_timestamp = 0 # Initialize a timer tracking the exact timestamp for the emergency stop phase
+        self.reverse_start_timestamp = 0 # Initialize a timer tracking the exact timestamp when reversing actually began
 
     def map_error_to_angle(self, error): # Method to convert pixel distance into a physical steering angle
         kp = 0.2           # Proportional gain: how aggressively the robot should steer to correct the error
