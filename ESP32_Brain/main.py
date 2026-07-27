@@ -96,23 +96,32 @@ class MotorController:
         self.stop()                     # CHANGED: Safely call stop() on boot to lock wheels immediately
         print("MotorController initialized and secured on boot.") # ADDED: Print confirmation that motors are set up
 
-    def drive_forward(self): # Method to command both motors to spin forward
-        self.en_a.value(1)              # CHANGED: Turn ON Left master power ONLY when driving
-        self.en_b.value(1)              # CHANGED: Turn ON Right master power ONLY when driving
-        self.in1.value(1)               # Pull Left Forward pin to 3.3V (HIGH)
-        self.in2.value(0)               # Pull Left Reverse pin to 0V (LOW)
-        self.in3.value(1)               # Pull Right Forward pin to 3.3V (HIGH)
-        self.in4.value(0)               # Pull Right Reverse pin to 0V (LOW)
-        print("Motors driving forward.") # ADDED: Print confirmation of forward movement
+    def drive_forward(self): # Method to command both motors to spin forward for normal line-following motion
+        self.en_a.value(1)              # Turn ON the left motor enable pin so the left wheel can receive power
+        self.en_b.value(1)              # Turn ON the right motor enable pin so the right wheel can receive power
+        self.in1.value(1)               # Set the left motor forward input HIGH to rotate the left wheel forward
+        self.in2.value(0)               # Set the left motor reverse input LOW so the left wheel does not rotate backward
+        self.in3.value(1)               # Set the right motor forward input HIGH to rotate the right wheel forward
+        self.in4.value(0)               # Set the right motor reverse input LOW so the right wheel does not rotate backward
+        print("Motors driving forward.") # Print a status message so the firmware log shows that forward motion was requested
 
-    def stop(self): # Method to completely halt all motor activity and cut power
-        self.en_a.value(0)              # CHANGED: COMPLETELY cut Left master power to guarantee zero jitter
-        self.en_b.value(0)              # CHANGED: COMPLETELY cut Right master power to guarantee zero jitter
-        self.in1.value(0)               # Drain Left Forward pin to 0V
-        self.in2.value(0)               # Drain Left Reverse pin to 0V
-        self.in3.value(0)               # Drain Right Forward pin to 0V
-        self.in4.value(0)               # Drain Right Reverse pin to 0V
-        print("Motors stopped and power cut.") # ADDED: Print confirmation that motors are physically dead
+    def reverse(self): # Method to command both motors to spin backward during the recovery state
+        self.en_a.value(1)              # Turn ON the left motor enable pin so the left wheel can move backward
+        self.en_b.value(1)              # Turn ON the right motor enable pin so the right wheel can move backward
+        self.in1.value(0)               # Set the left motor forward input LOW to stop forward drive on the left wheel
+        self.in2.value(1)               # Set the left motor reverse input HIGH to rotate the left wheel backward
+        self.in3.value(0)               # Set the right motor forward input LOW to stop forward drive on the right wheel
+        self.in4.value(1)               # Set the right motor reverse input HIGH to rotate the right wheel backward
+        print("Motors driving in reverse.") # Print a status message so the firmware log shows that reverse motion was requested
+
+    def stop(self): # Method to completely halt all motor activity and cut power for safety
+        self.en_a.value(0)              # Disable the left motor power pin to stop the left wheel immediately
+        self.en_b.value(0)              # Disable the right motor power pin to stop the right wheel immediately
+        self.in1.value(0)               # Force the left forward input LOW to prevent any forward motion
+        self.in2.value(0)               # Force the left reverse input LOW to prevent any backward motion
+        self.in3.value(0)               # Force the right forward input LOW to prevent any forward motion
+        self.in4.value(0)               # Force the right reverse input LOW to prevent any backward motion
+        print("Motors stopped and power cut.") # Print a status message so the firmware log confirms the robot is safely stopped
 
 # ---------------------------------------------------------
 # 2. NETWORK CLASS (The Ears)
@@ -251,7 +260,7 @@ class CameraStreamer:                              # Define the CameraStreamer c
                 print("Unknown state received. Stopping for safety.")
                 self.motors.stop()
                 
-        except Exception as e:
+        except Exception as         git push origin maine:
             # ERROR HANDLING: If letters were sent instead of numbers, catch the crash and stop
             print("Data parsing error:", e)
             self.motors.stop()
@@ -261,7 +270,7 @@ class CameraStreamer:                              # Define the CameraStreamer c
         self.network.connect_wifi()
         
         # Step 2: Connect to MQTT and pass it our processing function
-        self.network.connect_mqtt(self.process_message)
+        self.network.connect_mqtt  (self.process_message)
         
         print("Robot Orchestrator is online and waiting for commands.")
         
@@ -313,6 +322,8 @@ class RobotOrchestrator: # Define the RobotOrchestrator class to manage the main
             
             if state == "DRIVE":                     # Check if the command word is "DRIVE"
                 self.motors.drive_forward()          # Push the DC motors forward
+            elif state == "REVERSE":                 # Check if the command word is "REVERSE"
+                self.motors.reverse()                # Pull the DC motors backward
             elif state == "STOP":                    # Check if the command word is "STOP"
                 self.motors.stop()                   # Halt the DC motors
             else:                                    # Catch any weird unknown command words
