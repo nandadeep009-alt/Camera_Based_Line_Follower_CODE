@@ -1,2 +1,2 @@
-___pycache__/
-.vscode/
+*__pycache__/
+*tempCodeRunnerFile.py
