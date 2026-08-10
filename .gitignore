@@ -1,13 +1,21 @@
-*__pycache__/
-*tempCodeRunnerFile.py
-# Logs and dependency directories
-node_modules/
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.log
-.env
-.DS_Store
-# Ignore raw image dumps from testing
-images/
+*.pyc
+*.pyo
+
+# Local IDE Configurations
+.vscode/
+.idea/
+
+# DEVELOPMENT SANDBOXES (Matches both lower and upper case variations)
+Archive_Old_Versions/
+archive_old_versions/
+ESP32_Brain/
+esp32_brain/
+*.bin
+
+# Runtime media/data logs
 *.jpg
-dist/
-build/
+*.png
+images/
+logs/
