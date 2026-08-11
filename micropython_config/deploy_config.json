@@ -1,0 +1,11 @@
+{
+    "serial": {
+        "default_baudrate": 115200,
+        "auto_detect_port": true
+    },
+    "sync_mapping": {
+        "source_folder": "esp32",
+        "destination_device_root": "/"
+    },
+    "boot_entrypoint": "main.py"
+}

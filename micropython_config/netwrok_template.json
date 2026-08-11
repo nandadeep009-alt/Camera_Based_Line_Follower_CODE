@@ -1,0 +1,16 @@
+{
+    "wifi": {
+        "ssid": "YOUR_WIFI_SSID_HERE",
+        "password": "YOUR_WIFI_PASSWORD_HERE",
+        "connection_timeout_s": 15
+    },
+    "mqtt": {
+        "broker_ip": "192.168.1.100",
+        "port": 1883,
+        "command_topic": "esp32/control",
+        "auth_secret": "YOUR_SHARED_SECRET_TOKEN"
+    },
+    "safety": {
+        "motion_armed": false
+    }
+}
