@@ -16,7 +16,6 @@ A real-time, vision-guided autonomous line-following vehicle architecture using 
                                      v
 +-----------------------------------------------------------------------------+
 |                               PC MASTER NODE                                |
-|                                                                             |
 |  +------------------+    +-------------------+    +----------------------+  |
 |  |   pc_stream.py   | -> |   pc_vision.py    | -> |    pc_command.py     |  |
 |  | Threaded Capture |    | OpenCV Centroid/P |    |  RobotCommander Hub  |  |
