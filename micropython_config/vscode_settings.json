@@ -1,0 +1,15 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "pauloberg.micropython-ide"
+    ],
+    "workspace_settings": {
+        "python.analysis.extraPaths": [
+            "./esp32"
+        ],
+        "python.analysis.diagnosticSeverityOverrides": {
+            "reportMissingImports": "none"
+        }
+    }
+}

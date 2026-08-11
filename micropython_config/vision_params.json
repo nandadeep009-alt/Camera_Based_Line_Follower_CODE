@@ -1,0 +1,19 @@
+{
+    "camera_resolution": {
+        "width": 320,
+        "height": 240
+    },
+    "processing_roi": {
+        "roi_rows_bottom": 12
+    },
+    "line_detection": {
+        "dark_threshold": 90,
+        "min_dark_pixels": 200
+    },
+    "steering_control": {
+        "proportional_gain_kp": 0.25,
+        "servo_center_angle_deg": 90,
+        "min_angle_deg": 45,
+        "max_angle_deg": 135
+    }
+}

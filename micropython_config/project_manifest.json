@@ -1,0 +1,36 @@
+{
+    "project_name": "Autonomous ESP32-S3 Line Follower",
+    "version": "1.0.0",
+    "micropython_version": "v1.28.0",
+    "dependencies": {
+        "builtin_modules": [
+            "machine",
+            "network",
+            "camera",
+            "_thread",
+            "socket",
+            "utime"
+        ],
+        "external_packages": [
+            {
+                "name": "umqtt.simple",
+                "install_command": "mip.install('umqtt.simple')",
+                "purpose": "MQTT client communication for PC control and telemetry"
+            }
+        ]
+    },
+    "execution_entrypoints": {
+        "esp32": "esp32/main.py",
+        "pc": "pc/robot.py"
+    },
+    "environment_variables_required_in_config_py": [
+        "WIFI_SSID",
+        "WIFI_PASS",
+        "MQTT_BROKER",
+        "MQTT_USER",
+        "MQTT_PASS",
+        "COMMAND_TOPIC",
+        "COMMAND_SECRET",
+        "MOTION_ARMED"
+    ]
+}

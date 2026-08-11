@@ -1,0 +1,27 @@
+{
+    "project": "Camera Line Follower Robot",
+    "board": "ESP32-S3-WROOM-1",
+    "firmware": "ESP32_GENERIC_S3-20260406-v1.28.0.bin",
+    "pinout_mapping": {
+        "steering_servo": {
+            "signal_pin": 16,
+            "pwm_frequency_hz": 50,
+            "angle_range_deg": [
+                45,
+                135
+            ]
+        },
+        "l293d_motor_driver": {
+            "motor_en_a": 4,
+            "motor_in1": 5,
+            "motor_in2": 6,
+            "motor_en_b": 15,
+            "motor_in3": 7,
+            "motor_in4": 8
+        },
+        "camera_ov2640": {
+            "mode_autonomous": "GRAYSCALE_QVGA_320x240",
+            "mode_teleop": "JPEG_VGA_640x480"
+        }
+    }
+}
