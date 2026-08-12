@@ -19,3 +19,4 @@ esp32_brain/
 *.png
 images/
 logs/
+pc/config.py
