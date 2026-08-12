@@ -1,3 +1,132 @@
+# pc/robot.py
+# -----------------------------------------------------------------------------
+# MASTER PC APPLICATION ENTRY POINT - ARCHITECTURAL DEPENDENCY INJECTION
+# -----------------------------------------------------------------------------
+import sys
+import os
+import time
+import numpy as np
+
+# Pull local configuration switches
+try:
+    import config
+except ImportError:
+    print("[FATAL] config.py missing in execution path.")
+    sys.exit(1)
+
+# Import your repository's exact production logic modules
+from pc_vision import VisionController
+from pc_command import RobotCommander
+
+# Dynamic Environment Setup Pipeline Gate
+WebotsDriver = None
+if config.RUN_SIMULATION:
+    print("\n[SYSTEM] 🖥️ Booting in Hardware-in-the-Loop SIMULATION Mode (Webots)...")
+    user_home = os.path.expanduser('~')
+    webots_root = os.path.join(user_home, 'AppData', 'Local', 'Programs', 'Webots')
+    os.environ['WEBOTS_HOME'] = webots_root
+    webots_lib = os.path.join(webots_root, 'lib', 'controller')
+    os.environ['PATH'] = webots_lib + os.path.pathsep + os.environ['PATH']
+    if hasattr(os, 'add_dll_directory'):
+        os.add_dll_directory(webots_lib)
+        
+    # Append the master flat python folder location discovered on your disk
+    sys.path.append(os.path.join(webots_lib, 'python'))
+    
+    try:
+        from controller import Camera
+        from vehicle import Driver as WebotsDriver
+        import numpy as np
+    except ImportError as e:
+        print(f"[ERROR] Could not link Webots simulation libraries: {e}")
+        sys.exit(1)
+else:
+    print("\n[SYSTEM] 🚗 Booting in LIVE HARDWARE Mode (ESP32 Cam Over Wi-Fi)...")
+    
+if not config.RUN_SIMULATION:
+    from pc_stream import VideoStream
+    from pc_mqtt import MQTTController
+
+def main():
+    # Instantiate the unified image processing class
+    vision = VisionController()
+
+    if config.RUN_SIMULATION:
+        # =====================================================================
+        # PATH A: SIMULATION TOPOLOGY (Feeds Webots to your Exact Signatures)
+        # =====================================================================
+        robot = WebotsDriver() # type: ignore
+        cam = robot.getDevice('camera')
+        cam.enable(int(robot.getBasicTimeStep()))
+        
+        class VirtualMqttClient:
+            """Mocks the exact publish_control_packet structure used by pc_mqtt."""
+            def publish_control_packet(self, topic, speed, angle):
+                # Scale values to Webots simulator limits
+                sim_velocity_kmh = (speed / 1023.0) * 30.0
+                sim_steering_rad = ((angle - 90) * 3.14159) / 180.0
+                robot.setCruisingSpeed(sim_velocity_kmh)
+                robot.setSteeringAngle(max(-0.45, min(0.45, sim_steering_rad)))
+
+        mock_mqtt = VirtualMqttClient()
+        
+        # Injects parameters exactly matching your RobotCommander architecture
+        commander = RobotCommander(camera_module=None, vision_module=vision, mqtt_module=mock_mqtt)
+        
+        print("🚀 Virtual HIL Pipeline Online. Intercepting simulation execution loops...")
+        while robot.step() != -1:
+            raw_bytes = cam.getImage()
+            if not raw_bytes: 
+                continue
+            
+            # Format raw bytes cleanly into a structured matrix for cv2.resize
+            image_array = np.frombuffer(raw_bytes, dtype=np.uint8)
+            image_matrix = image_array.reshape((cam.getHeight(), cam.getWidth(), 4))
+            
+            # Executing identical functions matching your repo method keys
+            line_error = vision.process_frame(image_matrix)
+            commander.calculate_navigation_vectors(line_error)
+
+    else:
+        # =====================================================================
+        # PATH B: LIVE PHYSICAL HARDWARE TOPOLOGY (No Variable Names Altered)
+        # =====================================================================
+        stream = VideoStream(src=f"http://{config.MQTT_BROKER}/stream") # type: ignore
+        mqtt_client = MQTTController(broker_ip=config.MQTT_BROKER) # type: ignore
+        
+        if not mqtt_client.connect():
+            print("[ERROR] Physical broker link dropped. Aborting boot sequence.")
+            return
+            
+        commander = RobotCommander(camera_module=stream, vision_module=vision, mqtt_module=mqtt_client)
+        stream.start()
+        
+        print("🚀 Production Telemetry Track Online. Streaming live vehicle nodes...")
+        while True:
+            try:
+                live_frame = stream.read_frame()
+                if live_frame is None: 
+                    continue
+                
+                line_error = vision.process_frame(live_frame)
+                commander.calculate_navigation_vectors(line_error)
+                
+                time.sleep(0.01)
+            except KeyboardInterrupt:
+                break
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
 """
 =========================================================================================
 PC MAIN ENTRY POINT (robot.py)
@@ -7,7 +136,7 @@ Instantiates all required sub-modules (VideoStream, VisionController, MQTTContro
 and injects them into RobotCommander to launch the autonomous line-following control loop.
 =========================================================================================
 """
-
+""""
 import time  # type: ignore # Import time module for delay management during startup initialization
 from pc_stream import VideoStream  # type: ignore # Import threaded video capture module
 from pc_vision import VisionController  # type: ignore # Import vision analysis and drive control module
@@ -47,3 +176,4 @@ if __name__ == "__main__":  # type: ignore # Application main entry point execut
             except Exception:  # type: ignore # Suppress errors during emergency teardown
                 pass  # type: ignore
         raise  # type: ignore # Re-raise original startup exception to console output
+    """
