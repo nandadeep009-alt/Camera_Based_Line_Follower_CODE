@@ -10,11 +10,12 @@
 # -----------------------------------------------------------------------------
 WIFI_SSID = "Your_WiFi_SSID"
 WIFI_PASS = "Your_WiFi_Password"
-MQTT_BROKER = "192.168.1.100"
+MQTT_BROKER = "127.0.0.1"   #"192.168.1.100"
 MQTT_USER = None
 MQTT_PASS = None
-COMMAND_TOPIC = b"esp32/control"  # Topic defined as byte string for MQTT client compatibility
-COMMAND_SECRET = "MY_SECRET_KEY"  # Authentication shared secret token
+COMMAND_TOPIC = b"rove/actuators" # Topic defined as byte string for MQTT client compatibility
+FLEET_ALERT_TOPIC = b"rove/alerts"  
+COMMAND_SECRET = b"simulation_security_token_123"  # Authentication shared secret token
 MOTION_ARMED = False              # Safety flag: Set to True to allow physical motor movement
 
 # -----------------------------------------------------------------------------
