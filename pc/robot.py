@@ -164,8 +164,8 @@ def run_webots():
     virtual_mqtt = VirtualMQTTController(
         robot=robot,
         command_secret="WEBOTS_SIM",
-        max_speed_mps=3.0,
-        reverse_speed_mps=1.0,
+        max_speed_kmh=30.0,
+        reverse_speed_kmh=3.6,
         max_steering_rad=0.45,
     )
 
@@ -174,7 +174,7 @@ def run_webots():
     # -------------------------------------------------------------------------
 
     vision = VisionController(
-        scale_factor=0.5
+        scale_factor=1.0
     )
 
     # -------------------------------------------------------------------------
@@ -235,7 +235,7 @@ def run_real_vehicle():
     # -------------------------------------------------------------------------
 
     # Replace with actual ESP32 camera URL.
-    ESP32_CAMERA_URL = "http://192.168.x.x/"
+    ESP32_CAMERA_URL: str = "http://192.168.x.x/"
 
     pc_camera = None
     pc_mqtt = None
@@ -243,8 +243,8 @@ def run_real_vehicle():
     try:
 
         pc_camera = VideoStream(
-            src=ESP32_CAMERA_URL
-        )
+            src=ESP32_CAMERA_URL #type: ignore
+        ) # type: ignore # Initialize video stream from ESP32 camera URL
 
         time.sleep(1.0)
 
@@ -253,7 +253,7 @@ def run_real_vehicle():
         # ---------------------------------------------------------------------
 
         pc_vision = VisionController(
-            scale_factor=0.5
+            scale_factor=1.0
         )
 
         # ---------------------------------------------------------------------

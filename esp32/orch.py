@@ -6,11 +6,12 @@ import utime as time         # type: ignore # Import microsecond and millisecond
 DEBUG = False                 # Toggle flag for high-frequency debug serial logging
 
 class RobotOrchestrator:
-    def __init__(self, steering, motors, network, vision=None, autonomous_mode=True, command_secret=None, manual_override_window_ms=1000, wdt_timeout_ms=8000, motion_armed=False):
+    def __init__(self, steering, motors, network, vision=None, ultrasonic=None, autonomous_mode=True, command_secret=None, manual_override_window_ms=1000, wdt_timeout_ms=8000, motion_armed=False):
         self.steering = steering                 # Store injected SteeringController instance
         self.motors = motors                     # Store injected MotorController instance
         self.network = network                   # Store injected NetworkController instance
         self.vision = vision                     # Store injected OnboardVisionController instance
+        self.ultrasonic = ultrasonic             # Store injected UltrasonicSensor instance
         self.autonomous_mode = autonomous_mode   # Enable/disable autonomous vision control loop
         self.motion_armed = motion_armed         # Master safety arming flag for motor hardware activation
         self.command_secret = command_secret     # Secret token required to authenticate remote MQTT packets
@@ -41,6 +42,59 @@ class RobotOrchestrator:
         if not self.motion_armed:                # Gate physical movement based on safety arming flag
             print(f"MOTION LOCKED (MOTION_ARMED=False): would execute '{motor_cmd}'" + (f" at angle {angle}" if angle is not None else "") + ". Set MOTION_ARMED=True in config.py to enable.") # Log blocked movement
             return                               # Exit without triggering hardware pins
+
+                # -------------------------------------------------------------
+        # ULTRASONIC CLOSE-RANGE SAFETY VETO
+        # -------------------------------------------------------------
+        #
+        # Ultrasonic does NOT steer.
+        #
+        # It only prevents DRIVE/REVERSE when something is
+        # dangerously close.
+        # -------------------------------------------------------------
+
+        if (
+            self.ultrasonic is not None
+            and
+            motor_cmd in (
+                "DRIVE",
+                "REVERSE"
+            )
+        ):
+
+            distance_cm = (
+                self.ultrasonic.read_cm()
+            )
+
+            if distance_cm is None:
+
+                # Sensor failed / timed out.
+                # Fail safe to STOP.
+
+                self.motors.stop()
+
+                print(
+                    "ULTRASONIC INVALID -> "
+                    "MOTORS STOPPED"
+                )
+
+                return
+
+            if (
+                distance_cm
+                <=
+                self.ultrasonic.STOP_DISTANCE_CM
+            ):
+
+                self.motors.stop()
+
+                print(
+                    "ULTRASONIC SAFETY STOP | "
+                    f"distance={distance_cm:.1f} cm"
+                )
+
+                return
+
         if angle is not None:                    # Verify if a steering angle was supplied
             self.steering.set_angle(angle)       # Command physical servo position
         if motor_cmd == "DRIVE":
