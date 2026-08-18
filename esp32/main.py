@@ -13,7 +13,7 @@ import utime as time         # type: ignore # Import timing utilities for pauses
 
 # Modular imports from extracted project files
 import pin_config            # type: ignore # Import pin definition assignments
-from hw import SteeringController, MotorController # type: ignore # Import physical actuator classes
+from hw import SteeringController, MotorController, UltrasonicSensor # type: ignore # Import physical actuator classes
 from net import NetworkController # type: ignore # Import network communication client
 from cam import CameraStreamer # type: ignore # Import background MJPEG camera streamer
 from vision import OnboardVisionController # type: ignore # Import autonomous vision processing pipeline
@@ -51,6 +51,19 @@ if __name__ == "__main__":
             in4=pin_config.MOTOR_IN4
         )
 
+        # ==============================================================
+        # HC-SR04 ULTRASONIC SAFETY SENSOR
+        # ==============================================================
+
+        my_ultrasonic = UltrasonicSensor(
+            trig_pin=pin_config.ULTRASONIC_TRIG,
+            echo_pin=pin_config.ULTRASONIC_ECHO
+        )
+
+        print(
+            "HC-SR04 ultrasonic safety sensor initialized."
+        )
+
         my_network = NetworkController(        # Instantiate network manager with loaded credentials
             WIFI_SSID,
             WIFI_PASS,
@@ -73,6 +86,7 @@ if __name__ == "__main__":
             my_motors,
             my_network,
             vision=my_vision,
+            ultrasonic=my_ultrasonic,
             autonomous_mode=AUTONOMOUS_MODE,
             command_secret=COMMAND_SECRET,
             motion_armed=MOTION_ARMED

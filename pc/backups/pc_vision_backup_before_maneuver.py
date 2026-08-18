@@ -127,10 +127,10 @@ class VisionController:  # type: ignore
         ])
 
         # Minimum confidence for an AI object detection.
-        self.object_detection_conf = 0.15
+        self.object_detection_conf = 0.30
 
         # Vehicle path width as a fraction of camera width.
-        self.object_path_width_ratio = 0.30
+        self.object_path_width_ratio = 0.18
 
         # Object information exposed to the rest of the system.
         self.detected_object_type = "NONE"
@@ -226,7 +226,7 @@ class VisionController:  # type: ignore
 
         results = list(self.object_detector.predict(
             source=frame,
-            imgsz=640,
+            imgsz=320,
             conf=self.object_detection_conf,
             verbose=False
         ))
@@ -597,7 +597,7 @@ class VisionController:  # type: ignore
                 f"{raw_name} "
                 f"{confidence:.2f}"
             ),
-            (5, 118),
+            (5, 45),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.40,
             (0, 0, 255),
@@ -1038,7 +1038,7 @@ class VisionController:  # type: ignore
         # =====================================================================
 
         roi_start = int(
-            height * 0.30
+            height * 0.45
         )
 
         roi_mask = np.zeros_like(
@@ -1375,19 +1375,39 @@ class VisionController:  # type: ignore
 
             if elapsed < self.avoidance_duration:
 
-                if self.avoidance_direction == "RIGHT":
+                if (
+                    line_valid
+                    and
+                    line_cx is not None
+                ):
 
-                    # Strong RIGHT maneuver.
-                    # 90 = straight.
-                    # >90 = RIGHT.
-                    target_angle = 108
+                    line_angle = self.map_error_to_angle(
+                        line_error
+                    )
+
+                    if self.avoidance_direction == "RIGHT":
+
+                        target_angle = min(
+                            110,
+                            line_angle + 8
+                        )
+
+                    else:
+
+                        target_angle = max(
+                            70,
+                            line_angle - 8
+                        )
 
                 else:
 
-                    # Strong LEFT maneuver.
-                    # <90 = LEFT.
-                    target_angle = 72
+                    if self.avoidance_direction == "RIGHT":
 
+                        target_angle = 94
+
+                    else:
+
+                        target_angle = 86
 
                 self.state = "AVOID"
 
@@ -1398,7 +1418,7 @@ class VisionController:  # type: ignore
                         f"{self.avoidance_direction} "
                         f"{elapsed:.1f}s"
                     ),
-                    (5, 70),
+                    (5, 15),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.36,
                     (0, 0, 255),
@@ -1408,7 +1428,7 @@ class VisionController:  # type: ignore
                 cv2.putText(
                     small_frame,
                     f"AVOID ANGLE={target_angle}",
-                    (5, 92),
+                    (5, 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.34,
                     (0, 165, 255),
@@ -1481,7 +1501,11 @@ class VisionController:  # type: ignore
                 cv2.circle(
                     small_frame,
                     (
-                        line_cx, height //2
+                        line_cx,
+                        max(
+                            0,
+                            height - 5
+                        )
                     ),
                     3,
                     (0, 255, 0),
@@ -1492,7 +1516,7 @@ class VisionController:  # type: ignore
                 cv2.putText(
                     small_frame,
                     "LINE REACQUIRED",
-                    (5, 70),
+                    (5, 15),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.36,
                     (0, 255, 0),
@@ -1549,7 +1573,7 @@ class VisionController:  # type: ignore
                         f"REACQUIRE "
                         f"{self.reacquire_timeout - elapsed:.1f}s"
                     ),
-                    (5, 70),
+                    (5, 15),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.36,
                     (0, 255, 255),
@@ -1612,7 +1636,14 @@ class VisionController:  # type: ignore
             # -----------------------------------------------------------------
 
             cv2.circle(
-                small_frame,(line_cx, height // 2),
+                small_frame,
+                (
+                    line_cx,
+                    max(
+                        0,
+                        height - 5
+                    )
+                ),
                 3,
                 (0, 255, 0),
                 -1
@@ -1649,7 +1680,7 @@ class VisionController:  # type: ignore
                     f"E={int(line_error)} "
                     f"A={target_angle}"
                 ),
-                (5, 20),
+                (5, 15),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.36,
                 (0, 255, 0),
@@ -1663,7 +1694,7 @@ class VisionController:  # type: ignore
                     f"DRIVE "
                     f"Y={cv2.countNonZero(roi_mask)}"
                 ),
-                (5, 42),
+                (5, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.34,
                 (0, 255, 0),
@@ -1767,7 +1798,7 @@ class VisionController:  # type: ignore
         cv2.putText(
             small_frame,
             f"FAILSAFE: {self.state}",
-            (5, 70),
+            (5, 15),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.36,
             (0, 0, 255),
@@ -1781,7 +1812,7 @@ class VisionController:  # type: ignore
                 f"LINE LOST "
                 f"{self.line_missed_frames}"
             ),
-            (5, 92),
+            (5, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.34,
             (0, 255, 255),
