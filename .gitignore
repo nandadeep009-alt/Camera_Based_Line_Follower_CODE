@@ -21,3 +21,13 @@ images/
 logs/
 pc/config.py
 config.py
+
+# ============================================================
+# ROVE WEBOTS - LOCAL / GENERATED ASSETS
+# ============================================================
+
+# Large ML model files
+webots/assets/*.pt
+
+# Webots temporary/download files
+webots/temp/
