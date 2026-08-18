@@ -27,11 +27,11 @@ class WebotsCameraAdapter:
     def read(self):
         if self.stopped:
             return False, None
-
+        print("[WEBOTS CAMERA] waiting for simulation step...", flush=True)
         if self.robot.step() == -1:
             self.stopped = True
             return False, None
-
+        print("[WEBOTS CAMERA] simulation step received.", flush=True)
         try:
             raw = self.camera.getImage()
         except (ValueError, RuntimeError) as exc:
@@ -62,7 +62,9 @@ class WebotsCameraAdapter:
 
         frame = frame[:, :, :3].copy()
         import cv2
-        cv2.imwrite("webots_debug_frame.png", frame)
+        if self.last_frame_time == 0.0:
+            cv2.imwrite("webots_debug_frame.png", frame)
+            print("[WEBOTS CAMERA] First debug frame saved.")
         self.last_frame_time = time.time()
 
         return True, frame
@@ -105,78 +107,124 @@ class VirtualMQTTController:
         self,
         robot,
         command_secret="WEBOTS_SIM",
-        max_speed_mps=3.0,
-        reverse_speed_mps=1.0,
+        max_speed_kmh=120.0,
+        reverse_speed_kmh=3.6,
         max_steering_rad=0.45
     ):
         self.robot = robot
         self.command_secret = command_secret
         self.connected = True
-        self.max_speed_mps = float(max_speed_mps)
-        self.reverse_speed_mps = float(reverse_speed_mps)
+        # Webots Driver API uses km/h for cruising speed.
+        self.max_speed_kmh = float(max_speed_kmh)
+        self.reverse_speed_kmh = float(reverse_speed_kmh)
         self.max_steering_rad = float(max_steering_rad)
         self.client = VirtualMQTTClient()
 
         print("[WEBOTS MQTT] initialized")
 
     def send_command(self, angle, engine_state):
+        # -------------------------------------------------------------
+        # STEERING VALIDATION
+        # -------------------------------------------------------------
+
         try:
             angle = float(angle)
         except (TypeError, ValueError):
             print("[WEBOTS SAFETY] Invalid steering. STOP.")
             self._stop()
             return
-
+        # -------------------------------------------------------------
+        # ANGLE → RADIANS
+        #
+        # 90° = straight
+        # <90° = left
+        # >90° = right
+        # -------------------------------------------------------------
         steering = (
             (angle - 90.0)
             * np.pi
             / 180.0
         )
-
+        # -------------------------------------------------------------
+        # STEERING SAFETY LIMIT
+        # -------------------------------------------------------------
         steering = max(
             -self.max_steering_rad,
             min(self.max_steering_rad, steering)
         )
 
         state = str(engine_state).upper()
-
+        # =============================================================
+        # DRIVE
+        # =============================================================
         if state == "DRIVE":
             self.robot.setSteeringAngle(steering)
-            self.robot.setCruisingSpeed(self.max_speed_mps)
+            self.robot.setCruisingSpeed(self.max_speed_kmh) 
 
+            actual_speed = self.robot.getCurrentSpeed()
+            target_speed = self.robot.getTargetCruisingSpeed()
             print(
-                f"[WEBOTS CMD] DRIVE "
-                f"angle={angle:.1f} "
-                f"steering={steering:.3f} "
-                f"speed={self.max_speed_mps:.2f}"
+                f"[WEBOTS SPEED] "
+                f"target={target_speed:.2f} km/h |"
+                f"actual={actual_speed:.2f} km/h | "
+                f"steering={steering:.3f} rad"
             )
-
+        # =============================================================
+        # REVERSE
+        # =============================================================
         elif state == "REVERSE":
             self.robot.setSteeringAngle(steering)
-            self.robot.setCruisingSpeed(-self.reverse_speed_mps)
+            self.robot.setCruisingSpeed(-self.reverse_speed_kmh)
 
             print(
                 f"[WEBOTS CMD] REVERSE "
                 f"angle={angle:.1f}"
-            )
-
+                f"steering={steering:.3f} rad "
+                f"({reverse_speed_kmh:.2f} km/h)")
+        # =============================================================
+        # UNKNOWN STATE → FAIL SAFE STOP
+        # =============================================================
         else:
             self._stop()
 
             print(
-                f"[WEBOTS CMD] STOP "
-                f"angle={angle:.1f} "
-                f"state={state}"
+                f"[WEBOTS SAFETY] "
+                f"Unknown engine state '{state}'. "
+                f"STOP."
             )
+            self._stop()
 
     def _stop(self):
+
         try:
-            self.robot.setCruisingSpeed(0.0)
-            self.robot.setSteeringAngle(0.0)
+
+            self.robot.setCruisingSpeed(
+                0.0
+            )
+
+            self.robot.setSteeringAngle(
+                0.0
+            )
+
+            print(
+                "[WEBOTS SAFETY] STOP "
+                "speed=0.0 km/h "
+                "steering=0.0 rad"
+            )
+
         except Exception as exc:
-            print(f"[WEBOTS SAFETY] STOP failed: {exc}")
+
+            print(
+                f"[WEBOTS SAFETY] "
+                f"STOP failed: {exc}"
+            )
 
     def stop(self):
+
         self._stop()
+
         self.connected = False
-        print("[WEBOTS MQTT] stopped")
+
+        print(
+            "[WEBOTS MQTT] stopped"
+        )

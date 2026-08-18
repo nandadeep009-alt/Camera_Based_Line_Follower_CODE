@@ -5,6 +5,8 @@
 # Abstracts physical micro-controller hardware registers into clean method APIs.
 
 from machine import Pin, PWM                 # type: ignore #Import native ESP32 micro-controller hardware interface control classes (suppress VS Code warning)
+import machine
+import utime as time
 import pin_config                            # Link our central hardware wiring configuration file maps
 
 class SteeringController:                           # Define the SteeringController class to manage the servo motor that physically turns the front wheels
@@ -59,3 +61,172 @@ class MotorController:                              # Define the MotorController
         self.in4.value(0)                           # Reset logic pins to ground state to ensure safe structural idle state
         if pin_config.DEBUG:                        # Gate this print behind global configuration status to save precious loop processing time allocations
             print("Motors stopped and power cut.")     # Send active state tracking update across serial channel to connected workstation console
+
+
+# =============================================================================
+# HC-SR04 ULTRASONIC DISTANCE SENSOR
+# =============================================================================
+#
+# Purpose:
+#     Independent close-range safety sensor.
+#
+# IMPORTANT:
+#     This sensor does NOT decide left/right avoidance.
+#
+# Camera:
+#     Detects obstacle
+#     Decides avoidance direction
+#     Reacquires path
+#
+# Ultrasonic:
+#     Detects dangerously close object
+#     Commands STOP
+#
+# =============================================================================
+
+
+class UltrasonicSensor:
+
+    STOP_DISTANCE_CM = 55.0
+
+    def __init__(
+        self,
+        trig_pin,
+        echo_pin,
+        sample_interval_ms=100
+    ):
+
+        self._trig = Pin(
+            trig_pin,
+            Pin.OUT
+        )
+
+        self._echo = Pin(
+            echo_pin,
+            Pin.IN
+        )
+
+        self._trig.value(0)
+
+        self._sample_interval_ms = (
+            sample_interval_ms
+        )
+
+        self._last_sample_ms = 0
+
+        self._last_distance_cm = None
+
+    def _measure_once(self):
+
+        try:
+
+            # Send 10 microsecond trigger pulse.
+
+            self._trig.value(0)
+
+            time.sleep_us(2)
+
+            self._trig.value(1)
+
+            time.sleep_us(10)
+
+            self._trig.value(0)
+
+            # Measure HIGH echo pulse.
+
+            duration_us = (
+                machine.time_pulse_us(
+                    self._echo,
+                    1,
+                    30000
+                )
+            )
+
+            # Negative result means timeout/error.
+
+            if duration_us < 0:
+
+                return None
+
+            # Speed of sound conversion:
+            #
+            # distance_cm ≈ time_us / 58
+
+            distance_cm = (
+                float(duration_us)
+                / 58.0
+            )
+
+            # Reject impossible values.
+
+            if (
+                distance_cm < 2.0
+                or
+                distance_cm > 400.0
+            ):
+
+                return None
+
+            return distance_cm
+
+        except Exception as err:
+
+            print(
+                "Ultrasonic measurement error:",
+                err
+            )
+
+            return None
+
+    def read_cm(self):
+
+        now = time.ticks_ms()
+
+        # Do not trigger the sensor every motor-control cycle.
+        # Use the most recent valid measurement.
+
+        if (
+            time.ticks_diff(
+                now,
+                self._last_sample_ms
+            )
+            <
+            self._sample_interval_ms
+        ):
+
+            return (
+                self._last_distance_cm
+            )
+
+        self._last_sample_ms = now
+
+        distance_cm = (
+            self._measure_once()
+        )
+
+        self._last_distance_cm = (
+            distance_cm
+        )
+
+        return distance_cm
+
+    def is_blocked(self):
+
+        distance_cm = (
+            self.read_cm()
+        )
+
+        # Invalid sensor reading = unsafe.
+        if distance_cm is None:
+
+            return True
+
+        return (
+            distance_cm
+            <=
+            self.STOP_DISTANCE_CM
+        )
+
+    def get_distance(self):
+
+        return self._last_distance_cm
