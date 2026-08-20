@@ -106,13 +106,13 @@ class VirtualMQTTController:
     def __init__(
         self,
         robot,
-        command_secret="WEBOTS_SIM",
-        max_speed_kmh=120.0,
+        command_secret,
+        max_speed_kmh=10.0,
         reverse_speed_kmh=3.6,
         max_steering_rad=0.45
     ):
         self.robot = robot
-        self.command_secret = command_secret
+        self.command_secret =      command_secret
         self.connected = True
         # Webots Driver API uses km/h for cruising speed.
         self.max_speed_kmh = float(max_speed_kmh)
@@ -180,7 +180,7 @@ class VirtualMQTTController:
                 f"[WEBOTS CMD] REVERSE "
                 f"angle={angle:.1f}"
                 f"steering={steering:.3f} rad "
-                f"({reverse_speed_kmh:.2f} km/h)")
+                f"({self.reverse_speed_kmh:.2f} km/h)")
         # =============================================================
         # UNKNOWN STATE → FAIL SAFE STOP
         # =============================================================

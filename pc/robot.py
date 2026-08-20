@@ -50,7 +50,7 @@ try:
     import config
 
 except ImportError:
-    print("[FATAL] config.py missing from project root.")
+    print("[FATAL] config.py missing.")
     sys.exit(1)
 
 
@@ -163,8 +163,8 @@ def run_webots():
 
     virtual_mqtt = VirtualMQTTController(
         robot=robot,
-        command_secret="WEBOTS_SIM",
-        max_speed_kmh=30.0,
+        command_secret="COMMAND_SECRET",
+        max_speed_kmh=10.0,
         reverse_speed_kmh=3.6,
         max_steering_rad=0.45,
     )
