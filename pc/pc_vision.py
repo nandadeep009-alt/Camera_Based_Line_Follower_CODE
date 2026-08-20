@@ -56,6 +56,11 @@ class VisionController:  # type: ignore
 
         self.avoidance_active = False
         self.avoidance_direction = "NONE"
+
+        # Direction remains locked for the entire avoidance maneuver.
+        # It can only be changed when a new avoidance maneuver is started.
+        self.avoidance_direction_locked = False
+
         self.avoidance_start_time = 0.0
 
         # Controlled lateral manoeuvre.
@@ -1318,18 +1323,27 @@ class VisionController:  # type: ignore
                 width // 2
             )
 
+            # -------------------------------------------------------------
+            # SELECT AVOIDANCE DIRECTION
+            # -------------------------------------------------------------
+            # Direction is selected ONLY when a new avoidance maneuver starts.
+            # Once selected, it remains locked until the maneuver is completed.
+            # -------------------------------------------------------------
 
-            # Obstacle LEFT
-            # Vehicle passes on RIGHT.
+            if not self.avoidance_direction_locked:
 
-            if obstacle_cx < camera_center:
+                # Obstacle LEFT
+                # Vehicle passes on RIGHT.
+                if obstacle_cx < camera_center:
 
-                self.avoidance_direction = "RIGHT"
+                      self.avoidance_direction = "RIGHT"
 
-            else:
+                else:
 
-                self.avoidance_direction = "LEFT"
+                      self.avoidance_direction = "LEFT"
 
+                # Lock the selected direction.
+                self.avoidance_direction_locked = True
 
             # Preserve this direction for post-obstacle recovery.
             self.recovery_direction = (
@@ -1426,8 +1440,6 @@ class VisionController:  # type: ignore
             # -----------------------------------------------------------------
 
             self.avoidance_active = False
-
-            self.avoidance_direction = "NONE"
 
             self.reacquire_active = True
 
