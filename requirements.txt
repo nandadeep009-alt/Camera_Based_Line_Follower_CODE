@@ -1,0 +1,8 @@
+# ROVE Webots / PC simulation environment
+# Verified working on Python 3.12.4
+
+numpy==2.5.2
+opencv-python==5.0.0.93
+paho-mqtt==2.1.0
+torch==2.13.0
+ultralytics==8.4.120
