@@ -31,3 +31,7 @@ webots/assets/*.pt
 
 # Webots temporary/download files
 webots/temp/
+
+# Local ML model files
+*.pt
+*.ts
