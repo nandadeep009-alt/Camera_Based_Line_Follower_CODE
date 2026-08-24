@@ -403,7 +403,7 @@ if __name__ == "__main__":                         # Check if this script is bei
     
     # Credentials and endpoints for Wi-Fi and MQTT
     WIFI_SSID = "Airtel_Primerail Infralabs Pvt L" # Define the name of the local Wi-Fi network to connect to
-    WIFI_PASS = "REMOVED_FROM_HISTORY"                     # Define the password for the local Wi-Fi network
+    WIFI_PASS = "Your_WiFi_Password"                     # Define the password for the local Wi-Fi network
     MQTT_BROKER = "broker.hivemq.com"              # Define the URL of the free public MQTT internet broker
     COMMAND_TOPIC = b"primerail/robot/control"     # Define the specific MQTT channel to listen to for PC commands
 
