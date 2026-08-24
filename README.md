@@ -1,6 +1,6 @@
 # Camera_Based_Line_Follower_CODE
              #   OR
-# Autonomous Camera Line Follower System
+## Autonomous Camera Line Follower System
 
 A real-time, vision-guided autonomous line-following vehicle architecture using a **PC Master Control Node** for computer vision processing and an **ESP32 MicroPython Agent** for low-level motor/servo actuation over MQTT.
 
@@ -74,7 +74,7 @@ camera_line_follower/
 
 ---
 
-# 📚 Project Documentation
+## 📚 Project Documentation
 
 If you are new to ROVE, use the documents below in this order:
 
