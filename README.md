@@ -71,3 +71,51 @@ camera_line_follower/
 
 
 
+
+---
+
+# 📚 Project Documentation
+
+If you are new to ROVE, use the documents below in this order:
+
+1. **[Complete Setup Guide](docs/SETUP.md)**
+   Start here if you want to install, configure, and run the project on another computer.
+
+2. **[Development Roadmap](docs/ROADMAP.md)**
+   See what has been completed, what is currently being developed, and what remains.
+
+3. **Project Structure**
+   The project structure documentation will explain the purpose of the PC, ESP32, Webots, configuration, and documentation folders.
+
+---
+
+## 🚀 Quick Start
+
+```text
+NEW USER
+   |
+   v
+Read SETUP.md
+   |
+   v
+Install Python + dependencies
+   |
+   v
+Configure local environment
+   |
+   v
+Run Webots / PC simulation
+   |
+   v
+Study project structure
+   |
+   v
+Continue development
+## 🔐 Security
+
+Never commit real passwords, Wi-Fi credentials, MQTT credentials, API keys, tokens, or other private information.
+
+Use local configuration files that are excluded from Git.
+
+---
+
