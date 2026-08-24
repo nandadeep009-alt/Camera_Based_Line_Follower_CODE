@@ -12,7 +12,7 @@ camera_line_follower/
 +-- README.md
 +-- requirements.txt
 +-- .gitignore
-+-- data_definitions
++-- data_definitions.py
 |
 +-- docs/
 |   +-- SETUP.md
@@ -68,7 +68,7 @@ camera_line_follower/
 +-- README.md
 +-- requirements.txt
 +-- .gitignore
-+-- data_definitions
++-- data_definitions.py
 |
 +-- docs/
 |   +-- SETUP.md
@@ -128,7 +128,7 @@ camera_line_follower/
 +-- README.md
 +-- requirements.txt
 +-- .gitignore
-+-- data_definitions
++-- data_definitions.py
 |
 +-- docs/
 |   +-- SETUP.md
@@ -184,7 +184,7 @@ camera_line_follower/
 +-- README.md
 +-- requirements.txt
 +-- .gitignore
-+-- data_definitions
++-- data_definitions.py
 |
 +-- docs/
 |   +-- SETUP.md

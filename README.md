@@ -44,7 +44,7 @@ A real-time, vision-guided autonomous line-following vehicle architecture using 
 camera_line_follower/
 ├── data_definitions.py          # Unified data type declarations & wire specs
 ├── config.py                    # PC-side credentials & broker parameters (git-ignored)
-├── robot.py                     # Main PC application entry point
+│   ├── robot.py                  # Main PC application entry point
 ├── pc/
 │   ├── pc_stream.py             # Threaded video capture with auto-reconnect
 │   ├── pc_mqtt.py               # Outbound MQTT client with auto-reconnect backoff

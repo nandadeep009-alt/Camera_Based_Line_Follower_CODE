@@ -57,7 +57,7 @@ camera_line_follower/
 +-- requirements.txt
 +-- .gitignore
 +-- config.py
-+-- data_definitions
++-- data_definitions.py
 |
 +-- pc/
 |   +-- pc_stream.py
