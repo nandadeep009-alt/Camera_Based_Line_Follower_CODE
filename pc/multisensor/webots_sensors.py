@@ -193,3 +193,92 @@ class WebotsLidarReader:
         print(
             "[MULTISENSOR] Front LiDAR stopped."
         )
+
+class WebotsProximityReader:
+    """
+    Read the left-side, right-side, and rear Webots DistanceSensors.
+
+    This class does not call robot.step(). The main control loop owns
+    the Webots timestep.
+    """
+
+    DEFAULT_SENSOR_NAMES = {
+        "LEFT_SIDE": "left_side_obstacle",
+        "RIGHT_SIDE": "right_side_obstacle",
+        "REAR": "rear_obstacle",
+    }
+
+    def __init__(
+        self,
+        robot,
+        sensor_names=None,
+        max_range_m=6.0,
+    ):
+        self.robot = robot
+        self.timestep = int(robot.getBasicTimeStep())
+        self.max_range_m = float(max_range_m)
+        self.sensor_names = dict(
+            sensor_names or self.DEFAULT_SENSOR_NAMES
+        )
+        self.sensors = {}
+
+        for zone, device_name in self.sensor_names.items():
+            sensor = robot.getDevice(device_name)
+
+            if sensor is None:
+                raise RuntimeError(
+                    f"Obstacle sensor '{device_name}' not found."
+                )
+
+            sensor.enable(self.timestep)
+            self.sensors[zone] = sensor
+
+            print(
+                f"[MULTISENSOR] {zone} sensor initialized "
+                f"('{device_name}')"
+            )
+
+    def read(self):
+        """
+        Return current side/rear obstacle distances in metres.
+
+        Invalid readings are returned as math.nan so later safety logic
+        can fail safe instead of treating bad data as clear space.
+        """
+        readings = {}
+
+        for zone, sensor in self.sensors.items():
+            try:
+                value = float(sensor.getValue())
+            except (TypeError, ValueError, RuntimeError):
+                value = math.nan
+
+            if not math.isfinite(value) or value < 0.0:
+                readings[zone] = math.nan
+                continue
+
+            readings[zone] = min(
+                value,
+                self.max_range_m,
+            )
+
+        return readings
+
+    def is_clear(self, distance):
+        """
+        Return True only when the reading is valid and at max range.
+        """
+        return (
+            math.isfinite(distance)
+            and distance >= self.max_range_m
+        )
+
+    def stop(self):
+        """Disable all side/rear sensors cleanly."""
+        for sensor in self.sensors.values():
+            try:
+                sensor.disable()
+            except Exception:
+                pass
+
+        print("[MULTISENSOR] Side/rear sensors stopped.")

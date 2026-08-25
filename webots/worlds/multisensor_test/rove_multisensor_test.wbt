@@ -596,6 +596,19 @@ BmwX5 {
       translation 0.06 0 0.16
     }
   ]
+  sensorsSlotRear [
+    DistanceSensor {
+      translation 0 0 0.3
+      name "rear_obstacle"
+      lookupTable [
+        0 0 0
+        6 6 0
+      ]
+      type "sonar"
+      numberOfRays 5
+      aperture 0.523599
+    }
+  ]
   sensorsSlotTop [
     Camera {
       translation 0.62 0 0.0300008
@@ -625,6 +638,30 @@ BmwX5 {
     }
   ]
   sensorsSlotCenter [
+    DistanceSensor {
+      translation 1.2 1.05 0.55
+      rotation 0 0 1 1.5708
+      name "left_side_obstacle"
+      lookupTable [
+        0 0 0
+        6 6 0
+      ]
+      type "sonar"
+      numberOfRays 5
+      aperture 0.523599
+    }
+    DistanceSensor {
+      translation 1.2 -1.05 0.55
+      rotation 0 0 1 -1.5708
+      name "right_side_obstacle"
+      lookupTable [
+        0 0 0
+        6 6 0
+      ]
+      type "sonar"
+      numberOfRays 5
+      aperture 0.523599
+    }
     GPS {
     }
     Gyro {
