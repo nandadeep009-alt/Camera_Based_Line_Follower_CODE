@@ -53,4 +53,23 @@ assert supervisor.decide(s, "RIGHT") == "STOP"
 assert supervisor.decide({}, "FORWARD") == "FAIL_SAFE_STOP"
 assert supervisor.decide(snapshot(), "UNKNOWN") == "FAIL_SAFE_STOP"
 
+s = snapshot()
+s["CENTER_FRONT"]["status"] = "DANGER"
+assert supervisor.decide(s, "LEFT") == "DRIVE_ALLOWED"
+assert supervisor.decide(s, "RIGHT") == "DRIVE_ALLOWED"
+
+s = snapshot()
+s["CENTER_FRONT"]["status"] = "DANGER"
+s["LEFT_FRONT"]["status"] = "DANGER"
+assert supervisor.decide(s, "LEFT") == "STOP"
+assert supervisor.decide(s, "RIGHT") == "DRIVE_ALLOWED"
+
+s = snapshot()
+s["CENTER_FRONT"]["status"] = "DANGER"
+s["RIGHT_FRONT"]["status"] = "DANGER"
+assert supervisor.decide(s, "RIGHT") == "STOP"
+assert supervisor.decide(s, "LEFT") == "DRIVE_ALLOWED"
+
+assert supervisor.decide(snapshot(), "STOP") == "STOP"
+
 print("[PASS] SafetySupervisor offline tests passed")

@@ -6,14 +6,17 @@ class SafetySupervisor:
 
     MANEUVER_ZONES = {
         "FORWARD": ("LEFT_FRONT", "CENTER_FRONT", "RIGHT_FRONT"),
-        "LEFT": ("LEFT_FRONT", "CENTER_FRONT", "LEFT_SIDE"),
-        "RIGHT": ("RIGHT_FRONT", "CENTER_FRONT", "RIGHT_SIDE"),
+        "LEFT": ("LEFT_FRONT", "LEFT_SIDE"),
+        "RIGHT": ("RIGHT_FRONT", "RIGHT_SIDE"),
         "REVERSE": ("LEFT_SIDE", "RIGHT_SIDE", "REAR"),
     }
 
     VALID_STATUSES = {"CLEAR", "CAUTION", "DANGER", "INVALID"}
 
     def decide(self, snapshot, maneuver="FORWARD"):
+        if maneuver == "STOP":
+            return self.STOP
+
         if maneuver not in self.MANEUVER_ZONES:
             return self.FAIL_SAFE_STOP
 
