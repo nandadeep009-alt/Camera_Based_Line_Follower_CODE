@@ -1,0 +1,199 @@
+# tests/multisensor/test_sensor_zones.py
+
+import math
+import os
+import sys
+
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+    )
+)
+
+PC_DIR = os.path.join(PROJECT_ROOT, "pc")
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+if PC_DIR not in sys.path:
+    sys.path.insert(0, PC_DIR)
+
+
+# ------------------------------------------------------------
+# WEBOTS SETUP
+# ------------------------------------------------------------
+
+user_home = os.path.expanduser("~")
+
+webots_root = os.path.join(
+    user_home,
+    "AppData",
+    "Local",
+    "Programs",
+    "Webots",
+)
+
+webots_lib = os.path.join(
+    webots_root,
+    "lib",
+    "controller",
+)
+
+webots_python = os.path.join(
+    webots_lib,
+    "python",
+)
+
+os.environ["WEBOTS_HOME"] = webots_root
+
+if webots_lib not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = (
+        webots_lib
+        + os.pathsep
+        + os.environ.get("PATH", "")
+    )
+
+if hasattr(os, "add_dll_directory"):
+    try:
+        os.add_dll_directory(webots_lib)
+    except OSError:
+        pass
+
+if webots_python not in sys.path:
+    sys.path.insert(0, webots_python)
+
+
+from vehicle import Driver
+
+from multisensor.webots_sensors import WebotsLidarReader, WebotsProximityReader
+from multisensor.sensor_zones import FrontLidarZones
+from multisensor.sensor_fusion import SensorFusion
+from multisensor.safety_supervisor import SafetySupervisor
+from multisensor.speed_planner import SpeedPlanner
+
+
+# ------------------------------------------------------------
+# HELPERS
+# ------------------------------------------------------------
+
+def show(value):
+
+    if math.isfinite(value):
+        return f"{value:.2f} m"
+
+    return "CLEAR"
+
+
+# ------------------------------------------------------------
+# CONNECT
+# ------------------------------------------------------------
+
+robot = Driver()
+
+lidar = WebotsLidarReader(
+    robot=robot,
+    device_name="Sick LMS 291",
+)
+
+zones = FrontLidarZones()
+
+proximity = WebotsProximityReader(robot=robot)
+
+TEMP_THRESHOLDS = {zone: {"danger_m": 1.0, "caution_m": 2.0} for zone in SensorFusion.ZONES}
+fusion = SensorFusion(TEMP_THRESHOLDS)
+supervisor = SafetySupervisor()
+planner = SpeedPlanner(drive_speed_mps=3.0, slow_speed_mps=1.0)
+
+
+def show_side(value):
+    if not math.isfinite(value):
+        return "INVALID"
+    if proximity.is_clear(value):
+        return "CLEAR"
+    return f"{value:.2f} m"
+
+
+print()
+print("=" * 65)
+print("ROVE FRONT SENSOR ZONE TEST")
+print("=" * 65)
+
+
+cycle = 0
+
+try:
+
+    while True:
+
+        if robot.step() == -1:
+            break
+
+        scan = lidar.read_scan()
+
+        if scan is None:
+            continue
+
+        cycle += 1
+
+        if cycle % 10 != 0:
+            continue
+
+        result = zones.analyze(
+            scan=scan,
+            fov_rad=lidar.fov,
+        )
+
+        side = proximity.read()
+
+        readings = {
+            "LEFT_FRONT": result["LEFT_FRONT"],
+            "CENTER_FRONT": result["CENTER_FRONT"],
+            "RIGHT_FRONT": result["RIGHT_FRONT"],
+            "LEFT_SIDE": side["LEFT_SIDE"],
+            "RIGHT_SIDE": side["RIGHT_SIDE"],
+            "REAR": side["REAR"],
+        }
+
+        snapshot = fusion.fuse(readings)
+
+        forward_decision = supervisor.decide(snapshot, "FORWARD")
+        reverse_decision = supervisor.decide(snapshot, "REVERSE")
+
+        forward_speed = planner.target_speed(forward_decision)
+        reverse_speed = planner.target_speed(reverse_decision)
+
+        print(f"SAFETY | FORWARD={forward_decision} | REVERSE={reverse_decision}")
+        print(f"TARGET | FORWARD={forward_speed:.1f} m/s | REVERSE={reverse_speed:.1f} m/s")
+
+        print(
+            f"LEFT_FRONT={show(result['LEFT_FRONT'])} | "
+            f"CENTER_FRONT={show(result['CENTER_FRONT'])} | "
+            f"RIGHT_FRONT={show(result['RIGHT_FRONT'])} | "
+            f"LEFT_SIDE={show_side(side['LEFT_SIDE'])} | "
+            f"RIGHT_SIDE={show_side(side['RIGHT_SIDE'])} | "
+            f"REAR={show_side(side['REAR'])}"
+        )
+
+        print(
+            "FUSION | "
+            + " | ".join(
+                f"{zone}={snapshot[zone]['status']}"
+                for zone in SensorFusion.ZONES
+            )
+        )
+
+
+except KeyboardInterrupt:
+
+    print()
+    print("[TEST] Operator stopped zone test.")
+
+
+finally:
+
+    lidar.stop()
+    proximity.stop()
+
+    print("[TEST] Sensor zone test finished.")
