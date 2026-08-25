@@ -57,4 +57,14 @@ assert planner.choose(s) == "STOP"
 
 assert planner.choose({}) == "STOP"
 
+s = make_snapshot()
+s["RIGHT_FRONT"]["status"] = "DANGER"
+s["RIGHT_FRONT"]["distance_m"] = 0.8
+assert planner.choose(s) == "LEFT"
+
+s = make_snapshot()
+s["LEFT_FRONT"]["status"] = "DANGER"
+s["LEFT_FRONT"]["distance_m"] = 0.8
+assert planner.choose(s) == "RIGHT"
+
 print("[PASS] ManeuverPlanner offline tests passed")

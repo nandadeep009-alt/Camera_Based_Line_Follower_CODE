@@ -25,16 +25,17 @@ class ManeuverPlanner:
         return value
 
     def choose(self, snapshot):
-        center = self._status(snapshot, "CENTER_FRONT")
+        front_statuses = [
+            self._status(snapshot, "LEFT_FRONT"),
+            self._status(snapshot, "CENTER_FRONT"),
+            self._status(snapshot, "RIGHT_FRONT"),
+        ]
 
-        if center == "INVALID":
+        if any(status not in ("CLEAR", "CAUTION", "DANGER") for status in front_statuses):
             return self.STOP
 
-        if center in ("CLEAR", "CAUTION"):
+        if "DANGER" not in front_statuses:
             return self.FORWARD
-
-        if center != "DANGER":
-            return self.STOP
 
         left_clear = (
             self._status(snapshot, "LEFT_FRONT") == "CLEAR"
