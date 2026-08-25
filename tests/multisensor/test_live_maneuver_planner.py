@@ -161,13 +161,17 @@ try:
         snapshot = fusion.fuse(readings)
 
         maneuver = maneuver_planner.choose(snapshot)
+        selected_decision = supervisor.decide(snapshot, maneuver)
+        selected_speed = planner.target_speed(selected_decision, maneuver)
+
         print(f"MANEUVER | {maneuver}")
+        print(f"SELECTED | SAFETY={selected_decision} | SPEED={selected_speed:.1f} m/s")
 
         forward_decision = supervisor.decide(snapshot, "FORWARD")
         reverse_decision = supervisor.decide(snapshot, "REVERSE")
 
-        forward_speed = planner.target_speed(forward_decision)
-        reverse_speed = planner.target_speed(reverse_decision)
+        forward_speed = planner.target_speed(forward_decision, "FORWARD")
+        reverse_speed = planner.target_speed(reverse_decision, "REVERSE")
 
         print(f"SAFETY | FORWARD={forward_decision} | REVERSE={reverse_decision}")
         print(f"TARGET | FORWARD={forward_speed:.1f} m/s | REVERSE={reverse_speed:.1f} m/s")

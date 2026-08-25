@@ -34,4 +34,13 @@ for config in bad_configs:
     except ValueError:
         pass
 
+assert planner.target_speed("DRIVE_ALLOWED", "LEFT") == 0.8
+assert planner.target_speed("DRIVE_ALLOWED", "RIGHT") == 0.8
+assert planner.target_speed("DRIVE_ALLOWED", "REVERSE") == 0.5
+assert planner.target_speed("DRIVE_ALLOWED", "STOP") == 0.0
+assert planner.target_speed("SLOW", "LEFT") == 0.8
+assert planner.target_speed("SLOW", "RIGHT") == 0.8
+assert planner.target_speed("SLOW", "REVERSE") == 0.5
+assert planner.target_speed("DRIVE_ALLOWED", "UNKNOWN") == 0.0
+
 print("[PASS] SpeedPlanner offline safety tests passed")
