@@ -194,6 +194,46 @@ class VirtualMQTTController:
             )
             self._stop()
 
+    def send_motion_command(self, angle, target_speed_mps, reverse=False):
+        try:
+            angle = float(angle)
+            speed_mps = float(target_speed_mps)
+        except (TypeError, ValueError):
+            print("[WEBOTS SAFETY] Invalid motion command. STOP.")
+            self._stop()
+            return
+
+        if not np.isfinite(angle) or not np.isfinite(speed_mps) or speed_mps < 0.0:
+            print("[WEBOTS SAFETY] Invalid motion values. STOP.")
+            self._stop()
+            return
+
+        steering = (angle - 90.0) * np.pi / 180.0
+        steering = max(
+            -self.max_steering_rad,
+            min(self.max_steering_rad, steering)
+        )
+
+        speed_kmh = speed_mps * 3.6
+
+        if reverse:
+            speed_kmh = min(speed_kmh, self.reverse_speed_kmh)
+            speed_kmh = -speed_kmh
+        else:
+            speed_kmh = min(speed_kmh, self.max_speed_kmh)
+
+        if speed_mps == 0.0:
+            self._stop()
+            return
+
+        self.robot.setSteeringAngle(steering)
+        self.robot.setCruisingSpeed(speed_kmh)
+
+        print(
+            f"[WEBOTS MOTION] speed={speed_kmh:.2f} km/h | "
+            f"angle={angle:.1f} deg | steering={steering:.3f} rad"
+        )
+
     def _stop(self):
 
         try:
