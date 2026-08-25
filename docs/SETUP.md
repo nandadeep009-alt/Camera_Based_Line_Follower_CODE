@@ -118,3 +118,26 @@ For example:
 config.py
 ```
 
+---
+
+## Local PC Configuration
+
+The repository does not store real credentials.
+
+Create your local PC configuration by copying the provided template:
+
+    cp pc/config.example.py pc/config.py
+
+Then edit:
+
+    pc/config.py
+
+Set the following local values:
+
+    MQTT_BROKER
+    COMMAND_TOPIC
+    FLEET_ALERT_TOPIC
+    COMMAND_SECRET
+
+The file `pc/config.py` is excluded by `.gitignore` and must not be committed.
+
