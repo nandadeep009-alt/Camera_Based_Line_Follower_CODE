@@ -35,3 +35,6 @@ webots/temp/
 # Local ML model files
 *.pt
 *.ts
+
+# Local Webots generated project state
+webots/worlds/multisensor_test/.rove_multisensor_test.wbproj

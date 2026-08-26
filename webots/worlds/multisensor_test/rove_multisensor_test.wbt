@@ -647,8 +647,8 @@ BmwX5 {
         6 6 0
       ]
       type "sonar"
-      numberOfRays 5
-      aperture 0.523599
+      numberOfRays 31
+      aperture 1.047198
     }
     DistanceSensor {
       translation 1.2 -1.05 0.55
@@ -659,8 +659,8 @@ BmwX5 {
         6 6 0
       ]
       type "sonar"
-      numberOfRays 5
-      aperture 0.523599
+      numberOfRays 31
+      aperture 1.047198
     }
     GPS {
     }

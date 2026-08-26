@@ -282,3 +282,79 @@ class WebotsProximityReader:
                 pass
 
         print("[MULTISENSOR] Side/rear sensors stopped.")
+
+
+class WebotsPoseReader:
+    """
+    Read vehicle-mounted GPS and Gyro without advancing Webots.
+    """
+
+    def __init__(self, robot):
+        self.robot = robot
+        self.timestep = int(robot.getBasicTimeStep())
+
+        self.gps = self._find_device(("gps", "GPS"))
+        self.gyro = self._find_device(("gyro", "Gyro"))
+
+        if self.gps is None:
+            raise RuntimeError("Vehicle GPS device not found.")
+
+        if self.gyro is None:
+            raise RuntimeError("Vehicle Gyro device not found.")
+
+        self.gps.enable(self.timestep)
+        self.gyro.enable(self.timestep)
+
+        print("[MULTISENSOR] Vehicle GPS initialized")
+        print("[MULTISENSOR] Vehicle Gyro initialized")
+
+    def _find_device(self, names):
+        for name in names:
+            try:
+                device = self.robot.getDevice(name)
+            except Exception:
+                device = None
+
+            if device is not None:
+                return device
+
+        return None
+
+    def read(self):
+        try:
+            position = self.gps.getValues()
+            angular = self.gyro.getValues()
+        except Exception:
+            return None
+
+        if (
+            position is None
+            or angular is None
+            or len(position) < 3
+            or len(angular) < 3
+        ):
+            return None
+
+        try:
+            position = tuple(float(v) for v in position[:3])
+            yaw_rate = float(angular[2])
+        except (TypeError, ValueError):
+            return None
+
+        if (
+            not all(math.isfinite(v) for v in position)
+            or not math.isfinite(yaw_rate)
+        ):
+            return None
+
+        return {
+            "position": position,
+            "yaw_rate_rad_s": yaw_rate,
+        }
+
+    def stop(self):
+        for sensor in (self.gps, self.gyro):
+            try:
+                sensor.disable()
+            except Exception:
+                pass

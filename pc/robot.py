@@ -64,6 +64,7 @@ if not hasattr(config, "RUN_SIMULATION"):
 
 from pc_vision import VisionController
 from pc_command import RobotCommander
+from multisensor.webots_safety_controller import MultisensorWebotsController
 
 
 # -----------------------------------------------------------------------------
@@ -164,9 +165,14 @@ def run_webots():
     virtual_mqtt = VirtualMQTTController(
         robot=robot,
         command_secret="COMMAND_SECRET",
-        max_speed_kmh=10.0,
+        max_speed_kmh=30.0,
         reverse_speed_kmh=3.6,
         max_steering_rad=0.45,
+    )
+
+    multisensor_controller = MultisensorWebotsController(
+        robot=robot,
+        motion_controller=virtual_mqtt,
     )
 
     # -------------------------------------------------------------------------
@@ -184,7 +190,7 @@ def run_webots():
     commander = RobotCommander(
         camera_module=camera,
         vision_module=vision,
-        mqtt_module=virtual_mqtt,
+        mqtt_module=multisensor_controller,
     )
 
     print()
