@@ -21,13 +21,17 @@ from ultralytics import YOLOE
 
 class VisionController:  # type: ignore
 
-    def __init__(self, scale_factor=0.5):  # type: ignore
+    def __init__(self, scale_factor=0.5, enable_camera_avoidance=True):  # type: ignore
 
         # =====================================================================
         # BASIC VEHICLE / STEERING PARAMETERS
         # =====================================================================
 
         self.scale_factor = scale_factor
+
+        # Webots uses the multisensor controller as the single
+        # owner of obstacle-avoidance steering.
+        self.enable_camera_avoidance = bool(enable_camera_avoidance)
 
         self.servo_center = 90
         self.last_valid_angle = 90
@@ -96,6 +100,13 @@ class VisionController:  # type: ignore
         # Do not react to one noisy frame.
         self.obstacle_confirm_count = 0
         self.obstacle_confirm_required = 2
+
+        # Hold a confirmed object through short detector dropouts.
+        self.object_hold_frames = 8
+        self.object_missed_frames = 0
+        self.last_stable_object_bbox = None
+        self.last_stable_object_type = "NONE"
+        self.last_stable_object_confidence = 0.0
 
         # =====================================================================
         # LINE TRACKING MEMORY
@@ -909,6 +920,36 @@ class VisionController:  # type: ignore
     # MAIN FRAME PROCESSOR
     # =========================================================================
 
+    def _stabilize_object_detection(self, detected, cx, area, direction, frame_width):
+        if detected and self.detected_object_bbox is not None:
+            self.object_missed_frames = 0
+            self.last_stable_object_bbox = self.detected_object_bbox
+            self.last_stable_object_type = self.detected_object_type
+            self.last_stable_object_confidence = getattr(self, "detected_object_confidence", 0.0)
+            return detected, cx, area, direction
+
+        self.object_missed_frames += 1
+
+        if self.object_missed_frames <= self.object_hold_frames and self.last_stable_object_bbox is not None:
+            try:
+                x1, y1, x2, y2 = [float(v) for v in self.last_stable_object_bbox]
+                cx = int(round((x1 + x2) / 2.0))
+                area = max(0, int(round(abs(x2 - x1) * abs(y2 - y1))))
+                direction = "LEFT" if cx < frame_width / 2.0 else "RIGHT"
+                self.detected_object_bbox = self.last_stable_object_bbox
+                self.detected_object_type = self.last_stable_object_type
+                return True, cx, area, direction
+            except (TypeError, ValueError):
+                pass
+
+        if self.object_missed_frames > self.object_hold_frames:
+            self.last_stable_object_bbox = None
+            self.last_stable_object_type = "NONE"
+            self.last_stable_object_confidence = 0.0
+
+        return detected, cx, area, direction
+
+
     def process_frame(self, frame):
         """
         Process one camera frame.
@@ -1282,6 +1323,19 @@ class VisionController:  # type: ignore
             line_cx
         )
 
+        (
+            obstacle_detected,
+            obstacle_cx,
+            obstacle_area,
+            obstacle_direction,
+        ) = self._stabilize_object_detection(
+            obstacle_detected,
+            obstacle_cx,
+            obstacle_area,
+            obstacle_direction,
+            width,
+        )
+
 
         # =====================================================================
         # OBSTACLE CONFIRMATION
@@ -1311,6 +1365,8 @@ class VisionController:  # type: ignore
         # =====================================================================
 
         if (
+            self.enable_camera_avoidance
+            and
             not self.avoidance_active
             and
             not self.reacquire_active

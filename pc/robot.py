@@ -180,7 +180,8 @@ def run_webots():
     # -------------------------------------------------------------------------
 
     vision = VisionController(
-        scale_factor=1.0
+        scale_factor=1.0,
+        enable_camera_avoidance=False,
     )
 
     # -------------------------------------------------------------------------
